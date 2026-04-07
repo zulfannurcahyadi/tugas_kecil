@@ -39,24 +39,24 @@ st.markdown("---")
 
 # --- INPUT SECTION ---
 st.subheader("📊 Input Parameter Sensor")
+c1, c2, c3 = st.columns(3)
+with c1:
+    jam = st.number_input("🕒 Jam (0-23)", 0, 23, 12)
+with c2:
+    tegangan = st.number_input("🔌 Tegangan (V)", 0.0, 300.0, 230.0)
+with c3:
+    intensitas = st.number_input("📉 Arus (A)", 0.0, 50.0, 0.5)
+
+# --- KALKULASI DAYA (TARUH DI SINI) ---
+daya_watt = tegangan * intensitas
+daya_kw = daya_watt / 1000
+
+# Tampilkan Watt dan kW secara bersamaan agar kamu bisa kroscek
+st.write(f"**Real-time Power:** {daya_watt:.2f} Watt | **({daya_kw:.4f} kW)**")
+
 with st.container():
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        jam = st.number_input("🕒 Jam (0-23)", 0, 23, 12)
-    with c2:
-        tegangan = st.number_input("🔌 Tegangan (V)", 0.0, 300.0, 230.0)
-    with c3:
-        intensitas = st.number_input("📉 Arus (A)", 0.0, 50.0, 0.5)
-
-    c4, c5 = st.columns(2)
-    with c4:
-        # Konversi ke kW untuk tampilan (Watt / 1000)
-        daya_watt = tegangan * intensitas
-        daya_kw = daya_watt / 1000
-        st.write(f"**Estimasi Daya:** {daya_kw:.4f} kW")
-    with c5:
-        rolling_mean = st.number_input("🔄 Rata-rata Arus (5m)", 0.0, 50.0, 0.5)
-
+    rolling_mean = st.number_input("🔄 Rata-rata Arus (5m)", 0.0, 50.0, intensitas)
+    
 # --- PREDIKSI ---
 st.markdown("###")
 if st.button("🚀 ANALISIS BEBAN LISTRIK", use_container_width=True):
