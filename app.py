@@ -34,8 +34,8 @@ with col2:
     daya_semu = tegangan * intensitas
     st.text_input("Daya Semu (VA) - Auto", value=f"{daya_semu:.2f}", disabled=True)
     
-    rolling_mean = st.number_input("Rata-rata Arus (Rolling Mean 5 Menit)", min_value=0.0, value=intensitas)
-
+    rolling_mean = st.number_input("Rata-rata Arus (Rolling Mean 5 Menit)", min_value=0.0, value=0.5)
+    
 # --- PROSES PREDIKSI ---
 if st.button("Prediksi Kategori Beban"):
     # 1. Susun data input menjadi DataFrame sesuai urutan saat training
