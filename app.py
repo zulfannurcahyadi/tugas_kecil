@@ -36,9 +36,9 @@ with col2:
     
     rolling_mean = st.number_input("Rata-rata Arus (Rolling Mean 5 Menit)", min_value=0.0, value=0.5)
     
-# --- PROSES PREDIKSI --
+# --- PROSES PREDIKSI ---
 if st.button("Prediksi Kategori Beban"):
-    # 1. Susun data input menjadi DataFrame sesuai urutan saat training
+    # 1. Susun data input
     input_data = pd.DataFrame([[jam, tegangan, intensitas, daya_semu, rolling_mean]], 
                               columns=['Jam', 'Tegangan', 'Intensitas_Arus', 'Daya_Semu', 'Rata_Rata_Bergerak_5'])
     
@@ -48,18 +48,24 @@ if st.button("Prediksi Kategori Beban"):
     # 3. Prediksi
     prediction = model.predict(input_scaled)[0]
     
-    # 4. Mapping Label
+    # 4. Mapping Label dan Warna
     kategori = {0: "RENDAH", 1: "SEDANG", 2: "TINGGI"}
     warna = {0: "green", 1: "orange", 2: "red"}
     
     st.divider()
-    st.subheader("Hasil Analisis:")
+    
+    # --- TAMPILAN HASIL ---
+    st.subheader("Hasil Analisis Real-Time")
+    
+    # Menampilkan Watt/Daya dengan ukuran besar
+    st.metric(label="Estimasi Konsumsi Daya", value=f"{daya_semu:.2f} Watt/VA")
+    
     st.markdown(f"### Kategori Beban: :{warna[prediction]}[**{kategori[prediction]}**]")
     
-    # Penjelasan Tambahan
+    # Penjelasan berdasarkan Watt
     if prediction == 0:
-        st.info("Penggunaan energi sangat efisien. Beban pada perangkat elektronik minimal.")
+        st.info(f"Penggunaan daya sebesar {daya_semu:.2f} Watt termasuk kategori efisien.")
     elif prediction == 1:
-        st.warning("Penggunaan energi dalam batas wajar namun perlu diperhatikan.")
+        st.warning(f"Daya {daya_semu:.2f} Watt menunjukkan pemakaian sedang. Pastikan perangkat yang tidak perlu sudah dimatikan.")
     else:
-        st.error("Beban energi sangat tinggi! Segera periksa perangkat elektronik Anda untuk menghindari pemborosan.")
+        st.error(f"Peringatan! Penggunaan daya {daya_semu:.2f} Watt terdeteksi sangat tinggi. Risiko pemborosan energi terdeteksi.")
