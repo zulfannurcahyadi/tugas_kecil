@@ -1,91 +1,65 @@
 import streamlit as st
+import pandas as pd
 import numpy as np
 import pickle
+from xgboost import XGBClassifier
 
-# ==========================================
-# 1. KONFIGURASI HALAMAN (Harus paling atas)
-# ==========================================
-st.set_page_config(
-    page_title="Prediksi Konsumsi Energi",
-    page_icon="⚡",
-    layout="centered"
-)
+# --- LOAD MODEL DAN SCALER ---
+def load_model():
+    with open('model_xgb.pkl', 'rb') as f:
+        model = pickle.dump = pickle.load(f)
+    with open('scaler.pkl', 'rb') as f:
+        scaler = pickle.load(f)
+    return model, scaler
 
-# ==========================================
-# 2. FUNGSI MEMUAT MODEL & SCALER
-# ==========================================
-@st.cache_resource
-def load_components():
-    try:
-        with open('scaler.pkl', 'rb') as f:
-            scaler = pickle.load(f)
-        with open('model_rf.pkl', 'rb') as f:
-            model = pickle.load(f)
-        return scaler, model
-    except FileNotFoundError:
-        st.error("❌ File 'scaler.pkl' atau 'model_rf.pkl' tidak ditemukan! Pastikan file berada di folder yang sama dengan app.py.")
-        st.stop()
+model, scaler = load_model()
 
-scaler, model = load_components()
+# --- HEADER APLIKASI ---
+st.set_page_config(page_title="Prediksi Beban Listrik", layout="centered")
+st.title("⚡ Sistem Klasifikasi Beban Listrik")
+st.write("Aplikasi ini memprediksi kategori penggunaan listrik berdasarkan parameter sensor menggunakan model XGBoost.")
 
-# ==========================================
-# 3. ANTARMUKA PENGGUNA (UI)
-# ==========================================
-st.title("⚡ Klasifikasi Konsumsi Energi Listrik")
-st.markdown("""
-Aplikasi ini memprediksi beban penggunaan energi rumah tangga (Rendah, Sedang, Tinggi) 
-berdasarkan input parameter kelistrikan secara *real-time*.
-""")
 st.divider()
 
-# Layout Input menggunakan dua kolom
+# --- INPUT FORM ---
+st.subheader("Input Parameter Listrik")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Waktu & Arus")
-    jam = st.slider("Jam Penggunaan (0 - 23)", min_value=0, max_value=23, value=12, step=1)
-    intensitas_arus = st.number_input("Intensitas Arus (Ampere)", min_value=0.0, max_value=50.0, value=5.0, step=0.1)
+    jam = st.number_input("Jam (0-23)", min_value=0, max_value=23, value=12)
+    tegangan = st.number_input("Tegangan (Volt)", min_value=0.0, value=230.0)
+    intensitas = st.number_input("Intensitas Arus (Ampere)", min_value=0.0, value=0.5)
 
 with col2:
-    st.subheader("Tegangan & Tren Daya")
-    tegangan = st.number_input("Tegangan (Volt)", min_value=200.0, max_value=250.0, value=240.0, step=0.5)
-    rata_rata_5 = st.number_input("Tren Daya 5 Menit Terakhir (kW)", min_value=0.0, max_value=15.0, value=1.5, step=0.1)
+    daya_semu = tegangan * intensitas
+    st.text_input("Daya Semu (VA) - Auto", value=f"{daya_semu:.2f}", disabled=True)
+    
+    rolling_mean = st.number_input("Rata-rata Arus (Rolling Mean 5 Menit)", min_value=0.0, value=intensitas)
 
-# ==========================================
-# 4. LOGIKA PREDIKSI (Belakang Layar)
-# ==========================================
-if st.button("🚀 Lakukan Prediksi", use_container_width=True):
+# --- PROSES PREDIKSI ---
+if st.button("Prediksi Kategori Beban"):
+    # 1. Susun data input menjadi DataFrame sesuai urutan saat training
+    input_data = pd.DataFrame([[jam, tegangan, intensitas, daya_semu, rolling_mean]], 
+                              columns=['Jam', 'Tegangan', 'Intensitas_Arus', 'Daya_Semu', 'Rata_Rata_Bergerak_5'])
     
-    # Feature Engineering Otomatis
-    daya_semu = tegangan * intensitas_arus  # Menghitung VA
-    estimasi_kw = daya_semu / 1000          # Konversi estimasi ke kW untuk UI
-    
-    # Menyusun data input sesuai urutan fitur saat pelatihan model
-    # Urutan: ['Jam', 'Tegangan', 'Intensitas_Arus', 'Daya_Semu', 'Rata_Rata_Bergerak_5']
-    input_data = np.array([[jam, tegangan, intensitas_arus, daya_semu, rata_rata_5]])
-    
-    # Menerapkan Scaler agar skala angka sesuai dengan pemahaman model
+    # 2. Scaling data input
     input_scaled = scaler.transform(input_data)
     
-    # Eksekusi Prediksi
-    prediksi = model.predict(input_scaled)[0]
-    probabilitas = model.predict_proba(input_scaled)
-    akurasi_prediksi = np.max(probabilitas) * 100
+    # 3. Prediksi
+    prediction = model.predict(input_scaled)[0]
     
-    # ==========================================
-    # 5. MENAMPILKAN HASIL
-    # ==========================================
+    # 4. Mapping Label
+    kategori = {0: "RENDAH", 1: "SEDANG", 2: "TINGGI"}
+    warna = {0: "green", 1: "orange", 2: "red"}
+    
     st.divider()
-    st.subheader("Hasil Klasifikasi:")
+    st.subheader("Hasil Analisis:")
+    st.markdown(f"### Kategori Beban: :{warna[prediction]}[**{kategori[prediction]}**]")
     
-    if prediksi == 0:
-        st.success("🟢 **Kelas 0 : KONSUMSI RENDAH**")
-        st.info(f"⚡ **Estimasi Beban Daya: {estimasi_kw:.2f} kW**\n\n🎯 Tingkat Keyakinan Model: **{akurasi_prediksi:.2f}%**\n\nSistem kelistrikan berada pada beban dasar yang aman dan stabil.")
-    elif prediksi == 1:
-        st.warning("🟡 **Kelas 1 : KONSUMSI SEDANG**")
-        st.info(f"⚡ **Estimasi Beban Daya: {estimasi_kw:.2f} kW**\n\n🎯 Tingkat Keyakinan Model: **{akurasi_prediksi:.2f}%**\n\nPemakaian listrik terpantau aktif. Beberapa alat elektronik utama sedang beroperasi.")
+    # Penjelasan Tambahan
+    if prediction == 0:
+        st.info("Penggunaan energi sangat efisien. Beban pada perangkat elektronik minimal.")
+    elif prediction == 1:
+        st.warning("Penggunaan energi dalam batas wajar namun perlu diperhatikan.")
     else:
-        st.error("🔴 **Kelas 2 : KONSUMSI TINGGI**")
-        st.info(f"⚡ **Estimasi Beban Daya: {estimasi_kw:.2f} kW**\n\n🎯 Tingkat Keyakinan Model: **{akurasi_prediksi:.2f}%**\n\nPeringatan: Beban arus tinggi terdeteksi. Alat berat seperti AC atau pemanas kemungkinan besar sedang aktif.")
-        
-    st.caption(f"*Info Teknis: Daya Semu terhitung pada sistem adalah {daya_semu:.2f} VA*")
+        st.error("Beban energi sangat tinggi! Segera periksa perangkat elektronik Anda untuk menghindari pemborosan.")
