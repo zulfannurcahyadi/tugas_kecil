@@ -36,7 +36,7 @@ with col2:
     
     rolling_mean = st.number_input("Rata-rata Arus (Rolling Mean 5 Menit)", min_value=0.0, value=0.5)
     
-# --- PROSES PREDIKSI ---
+# --- PROSES PREDIKSI --
 if st.button("Prediksi Kategori Beban"):
     # 1. Susun data input menjadi DataFrame sesuai urutan saat training
     input_data = pd.DataFrame([[jam, tegangan, intensitas, daya_semu, rolling_mean]], 
