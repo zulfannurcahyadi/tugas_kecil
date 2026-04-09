@@ -43,10 +43,7 @@ month = input_date.month
 
 # --- PROSES PREDIKSI ---
 if st.button("Hitung Prediksi"):
-    # URUTAN KOLOM HARUS PERSIS SESUAI TRAINING (X_train.columns)
-    # Berdasarkan heatmap kamu: Reactive, Voltage, Intensity, Sub1, Sub2, Sub3, Hour
-    # (Dan ditambah Day, Month jika kamu menggunakannya saat training)
-    
+    # Kita hapus 'day' dan 'month' karena Scaler kamu tidak mengenalnya saat training
     data_input = {
         'Global_reactive_power': [reactive],
         'Voltage': [voltage],
@@ -54,22 +51,20 @@ if st.button("Hitung Prediksi"):
         'Sub_metering_1': [sub1],
         'Sub_metering_2': [sub2],
         'Sub_metering_3': [sub3],
-        'hour': [hour],
-        'day': [day],
-        'month': [month]
+        'hour': [hour]
     }
     
     input_df = pd.DataFrame(data_input)
     
     try:
-        # 1. Scaling
+        # 1. Scaling (Sekarang jumlah fitur sudah pas yaitu 7 fitur)
         input_scaled = scaler.transform(input_df)
         
         # 2. Predict
         prediction = model.predict(input_scaled)
         
         st.success(f"Hasil Prediksi: {prediction[0]:.4f} kW")
+        st.balloons()
         
-    except ValueError as e:
-        st.error("Terjadi ketidakcocokan fitur antara Aplikasi dan Scaler.")
-        st.info(f"Detail Error: {e}")
+    except Exception as e:
+        st.error(f"Terjadi kesalahan teknis: {e}")
