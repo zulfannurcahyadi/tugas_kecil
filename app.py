@@ -39,9 +39,9 @@ if model is not None and scaler is not None:
     
     col1, col2 = st.columns(2)
     with col1:
-        intensity = st.number_input("Global Intensity (Ampere)", value=5.0, format="%.2f")
-        voltage = st.number_input("Voltage (Volt)", value=240.0, format="%.1f")
         reactive = st.number_input("Global Reactive Power (kW)", value=0.1, format="%.3f")
+        voltage = st.number_input("Voltage (Volt)", value=240.0, format="%.1f")
+        intensity = st.number_input("Global Intensity (Ampere)", value=5.0, format="%.2f")
 
     with col2:
         sub1 = st.number_input("Sub Metering 1 (Wh) - Dapur", value=0.0)
