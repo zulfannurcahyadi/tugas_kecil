@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import datetime
 from pathlib import Path
+
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Energy Predictor", page_icon="⚡", layout="centered")
 
 # --- LOAD ASSETS ---
 base_path = Path(__file__).parent
@@ -12,54 +14,85 @@ scaler_path = base_path / 'scaler.pkl'
 
 @st.cache_resource
 def load_assets():
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
-    with open(scaler_path, 'rb') as f:
-        scaler = pickle.load(f)
-    return model, scaler
+    try:
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+        with open(scaler_path, 'rb') as f:
+            scaler = pickle.load(f)
+        return model, scaler
+    except Exception as e:
+        st.error(f"Gagal memuat model/scaler: {e}")
+        return None, None
 
 model, scaler = load_assets()
 
-# --- UI ---
+# --- UI HEADER ---
 st.title("⚡ Household Energy Predictor")
+st.markdown("""
+Aplikasi ini memprediksi konsumsi daya listrik rumah tangga berdasarkan parameter teknis 
+dan pola waktu (jam). Fitur tanggal telah dihilangkan untuk efisiensi model.
+""")
 
-# --- INPUT ---
-col1, col2 = st.columns(2)
-with col1:
-    reactive = st.number_input("Global Reactive Power (kW)", value=0.1)
-    voltage = st.number_input("Voltage (V)", value=240.0)
-    intensity = st.number_input("Global Intensity (A)", value=5.0)
-    sub1 = st.number_input("Sub Metering 1 (Wh)", value=0.0)
+if model is not None and scaler is not None:
+    # --- INPUT SECTION ---
+    st.subheader("📊 Input Parameter Listrik")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        intensity = st.number_input("Global Intensity (Ampere)", value=5.0, format="%.2f")
+        voltage = st.number_input("Voltage (Volt)", value=240.0, format="%.1f")
+        reactive = st.number_input("Global Reactive Power (kW)", value=0.1, format="%.3f")
 
-with col2:
-    sub2 = st.number_input("Sub Metering 2 (Wh)", value=0.0)
-    sub3 = st.number_input("Sub Metering 3 (Wh)", value=15.0)
-    hour = st.slider("Pilih Jam", 0, 23, 19)
+    with col2:
+        sub1 = st.number_input("Sub Metering 1 (Wh) - Dapur", value=0.0)
+        sub2 = st.number_input("Sub Metering 2 (Wh) - Laundry", value=0.0)
+        sub3 = st.number_input("Sub Metering 3 (Wh) - AC/Pemanas", value=15.0)
 
-# --- PROSES PREDIKSI ---
-if st.button("Hitung Prediksi"):
-    # Kita hapus 'day' dan 'month' karena Scaler kamu tidak mengenalnya saat training
-    data_input = {
-        'Global_reactive_power': [reactive],
-        'Voltage': [voltage],
-        'Global_intensity': [intensity],
-        'Sub_metering_1': [sub1],
-        'Sub_metering_2': [sub2],
-        'Sub_metering_3': [sub3],
-        'hour': [hour]
-    }
-    
-    input_df = pd.DataFrame(data_input)
-    
-    try:
-        # 1. Scaling (Sekarang jumlah fitur sudah pas yaitu 7 fitur)
-        input_scaled = scaler.transform(input_df)
-        
-        # 2. Predict
-        prediction = model.predict(input_scaled)
-        
-        st.success(f"Hasil Prediksi: {prediction[0]:.4f} kW")
-        st.balloons()
-        
-    except Exception as e:
-        st.error(f"Terjadi kesalahan teknis: {e}")
+    st.divider()
+    
+    # --- INPUT WAKTU (JAM SAJA) ---
+    st.subheader("🕒 Konteks Waktu")
+    hour = st.select_slider("Pilih Jam Operasional (0-23)", options=list(range(24)), value=19)
+
+    # --- PROSES PREDIKSI ---
+    if st.button("🚀 Hitung Prediksi Daya", use_container_width=True):
+        # Menyusun data sesuai urutan 7 fitur yang dilatih pada model
+        data_input = {
+            'Global_reactive_power': [reactive],
+            'Voltage': [voltage],
+            'Global_intensity': [intensity],
+            'Sub_metering_1': [sub1],
+            'Sub_metering_2': [sub2],
+            'Sub_metering_3': [sub3],
+            'hour': [hour]
+        }
+        
+        input_df = pd.DataFrame(data_input)
+        
+        try:
+            # 1. Transformasi data menggunakan Scaler yang sudah dilatih
+            input_scaled = scaler.transform(input_df)
+            
+            # 2. Prediksi menggunakan model Random Forest
+            prediction = model.predict(input_scaled)
+            
+            # --- TAMPILAN HASIL ---
+            st.divider()
+            st.markdown("### 💡 Hasil Estimasi")
+            
+            # Menampilkan hasil dengan komponen metric agar lebih menarik
+            st.metric(label="Global Active Power", value=f"{prediction[0]:.4f} kW")
+            
+            if prediction[0] > 2.0:
+                st.warning("Peringatan: Konsumsi energi diprediksi cukup tinggi.")
+            else:
+                st.success("Informasi: Konsumsi energi berada dalam batas normal.")
+            
+            st.balloons()
+            
+        except Exception as e:
+            st.error(f"Terjadi kesalahan teknis saat prediksi: {e}")
+
+# --- FOOTER ---
+st.divider()
+st.caption("Dikembangkan untuk Case Project Machine Learning - Informatika")
