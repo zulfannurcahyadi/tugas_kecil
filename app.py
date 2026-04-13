@@ -83,11 +83,6 @@ if model is not None and scaler is not None:
             # Menampilkan hasil dengan komponen metric agar lebih menarik
             st.metric(label="Global Active Power", value=f"{prediction[0]:.4f} kW")
             
-            if prediction[0] > 2.0:
-                st.warning("Peringatan: Konsumsi energi diprediksi cukup tinggi.")
-            else:
-                st.success("Informasi: Konsumsi energi berada dalam batas normal.")
-            
             st.balloons()
             
         except Exception as e:
